@@ -24,7 +24,14 @@ jobs:
           gradle-version: 8.10.2
 
       - name: Build debug APK
-        run: gradle assembleDebug --no-daemon
+        run: |
+          set -o pipefail
+          gradle assembleDebug --no-daemon --console=plain 2>&1 | tee build.log
+
+      - name: Show build errors
+        if: failure()
+        run: |
+          grep -E "^e: |^w: .*error|error:|What went wrong|^> |Execution failed" build.log | head -40 | while IFS= read -r l; do echo "::error::${l//%/%25}"; done
 
       - uses: actions/upload-artifact@v4
         with:
