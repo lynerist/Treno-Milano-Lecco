@@ -46,7 +46,7 @@ object ViaggiaTreno {
      * Cerca i prossimi treni nella direzione indicata. Il tabellone copre circa un'ora di partenze;
      * lo interroghiamo a "adesso" e a +60 minuti e uniamo i risultati.
      */
-    fun fetch(direction: Direction, now: ZonedDateTime): Snapshot {
+    fun fetch(direction: Direction, now: ZonedDateTime): Section {
         val nowMs = now.toInstant().toEpochMilli()
         val seen = HashSet<String>()
         val trains = ArrayList<Train>()
@@ -77,12 +77,10 @@ object ViaggiaTreno {
         }
         if (maxLatency > SLOW_MS) notes.add("Servizio lento (${maxLatency / 1000} s)")
 
-        return Snapshot(
-            fetchedAtMs = nowMs,
+        return Section(
             directionLabel = direction.label,
             trains = upcoming,
-            note = notes.takeIf { it.isNotEmpty() }?.joinToString(" · "),
-            error = null
+            note = notes.takeIf { it.isNotEmpty() }?.joinToString(" · ")
         )
     }
 

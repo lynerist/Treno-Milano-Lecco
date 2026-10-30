@@ -4,7 +4,7 @@ App Android + widget che mostra il prossimo treno Lecco ⇄ Milano Porta Garibal
 
 ## Come funziona
 - **Quando controlla**: solo lun–ven, 07:00–09:00 e 16:00–19:00 (fuso Europe/Rome). Fuori fascia il widget dice "Fuori orario" e quando riprende. Gli orari si cambiano in `Config.kt`.
-- **Direzione**: prima delle 13:00 Lecco → Milano P.G., dopo Milano P.G. → Lecco (anche questo in `Config.kt`).
+- **Direzioni**: widget e app mostrano due sezioni separate, "Lecco → Milano P.G." e "Milano P.G. → Lecco", ciascuna con i prossimi treni.
 - **Aggiornamento**: ogni 3 minuti dentro le fasce attive.
 - **Dati**: API non ufficiale di ViaggiaTreno (include i treni Trenord). Trenord non ha un'API pubblica ufficiale.
 - **Avvisi nel widget** (⚠): servizio non raggiungibile, dati vecchi di N minuti, rilevamento del treno fermo da oltre 10 minuti, servizio lento.

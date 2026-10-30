@@ -23,15 +23,24 @@ data class Train(
     val effectiveMs: Long get() = scheduledMs + max(delayMin, 0) * 60_000L
 }
 
-data class Snapshot(
-    val fetchedAtMs: Long,
+/** I prossimi treni di una direzione (es. "Lecco → Milano P.G."). */
+data class Section(
     val directionLabel: String,
     val trains: List<Train>,
     /** Avviso sulla qualità dei dati (rilevamento fermo, servizio lento...). */
-    val note: String?,
+    val note: String?
+) {
+    fun upcoming(nowMs: Long): List<Train> = trains.filter { it.effectiveMs >= nowMs - 60_000 }
+}
+
+data class Snapshot(
+    val fetchedAtMs: Long,
+    val sections: List<Section>,
     /** Errore dell'ultimo tentativo di aggiornamento (i treni restano quelli dell'ultimo riuscito). */
     val error: String?
-)
+) {
+    val isEmpty: Boolean get() = fetchedAtMs == 0L && sections.all { it.trains.isEmpty() }
+}
 
 object Palette {
     val cardBg = Color(0xFF1B1D23)
@@ -73,9 +82,10 @@ object Fmt {
     /** Testo di avviso da mostrare sotto i treni, o null se tutto è regolare. */
     fun warning(s: Snapshot, nowMs: Long): String? {
         val ageMin = ((nowMs - s.fetchedAtMs) / 60_000).toInt()
+        val note = s.sections.firstNotNullOfOrNull { it.note }
         return when {
             s.error != null -> "⚠ ${s.error}" + if (s.fetchedAtMs > 0) " · dati di $ageMin min fa" else ""
-            s.note != null -> "⚠ ${s.note}"
+            note != null -> "⚠ $note"
             ageMin > 8 -> "⚠ Dati di $ageMin min fa"
             else -> null
         }
@@ -85,28 +95,30 @@ object Fmt {
 /** Salva l'ultimo risultato in SharedPreferences, così widget e app lo condividono. */
 object SnapshotStore {
     private const val PREFS = "snapshot"
-    private const val KEY = "json"
+    private const val KEY = "json_v2"
 
     fun save(ctx: Context, s: Snapshot) {
-        val arr = JSONArray()
-        for (t in s.trains) {
-            arr.put(
-                JSONObject()
-                    .put("label", t.label)
-                    .put("dest", t.destination)
-                    .put("sched", t.scheduledMs)
-                    .put("delay", t.delayMin)
-                    .put("status", t.status.name)
-                    .put("platform", t.platform)
-                    .put("seen", t.lastSeenMs)
-            )
+        val secs = JSONArray()
+        for (sec in s.sections) {
+            val arr = JSONArray()
+            for (t in sec.trains) {
+                arr.put(
+                    JSONObject()
+                        .put("label", t.label)
+                        .put("dest", t.destination)
+                        .put("sched", t.scheduledMs)
+                        .put("delay", t.delayMin)
+                        .put("status", t.status.name)
+                        .put("platform", t.platform)
+                        .put("seen", t.lastSeenMs)
+                )
+            }
+            secs.put(JSONObject().put("dir", sec.directionLabel).put("note", sec.note).put("trains", arr))
         }
         val o = JSONObject()
             .put("fetched", s.fetchedAtMs)
-            .put("dir", s.directionLabel)
-            .put("note", s.note)
             .put("error", s.error)
-            .put("trains", arr)
+            .put("sections", secs)
         ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putString(KEY, o.toString()).apply()
     }
 
@@ -114,26 +126,25 @@ object SnapshotStore {
         val raw = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(KEY, null) ?: return null
         return try {
             val o = JSONObject(raw)
-            val arr = o.getJSONArray("trains")
-            val trains = (0 until arr.length()).map { i ->
-                val t = arr.getJSONObject(i)
-                Train(
-                    label = t.getString("label"),
-                    destination = t.getString("dest"),
-                    scheduledMs = t.getLong("sched"),
-                    delayMin = t.getInt("delay"),
-                    status = TrainStatus.valueOf(t.getString("status")),
-                    platform = t.strOrNull("platform"),
-                    lastSeenMs = if (t.isNull("seen")) null else t.getLong("seen")
-                )
+            val secs = o.getJSONArray("sections")
+            val sections = (0 until secs.length()).map { si ->
+                val so = secs.getJSONObject(si)
+                val arr = so.getJSONArray("trains")
+                val trains = (0 until arr.length()).map { i ->
+                    val t = arr.getJSONObject(i)
+                    Train(
+                        label = t.getString("label"),
+                        destination = t.getString("dest"),
+                        scheduledMs = t.getLong("sched"),
+                        delayMin = t.getInt("delay"),
+                        status = TrainStatus.valueOf(t.getString("status")),
+                        platform = t.strOrNull("platform"),
+                        lastSeenMs = if (t.isNull("seen")) null else t.getLong("seen")
+                    )
+                }
+                Section(so.getString("dir"), trains, so.strOrNull("note"))
             }
-            Snapshot(
-                fetchedAtMs = o.getLong("fetched"),
-                directionLabel = o.getString("dir"),
-                trains = trains,
-                note = o.strOrNull("note"),
-                error = o.strOrNull("error")
-            )
+            Snapshot(o.getLong("fetched"), sections, o.strOrNull("error"))
         } catch (e: Exception) {
             null
         }

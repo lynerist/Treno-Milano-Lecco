@@ -91,10 +91,22 @@ private fun MainScreen() {
         )
 
         val s = snap
-        if (s != null && s.trains.isNotEmpty()) {
-            Text(s.directionLabel, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
-            val nowMs = now.toInstant().toEpochMilli()
-            s.trains.filter { it.effectiveMs >= nowMs - 60_000 }.forEach { TrainCard(it) }
+        val nowMs = now.toInstant().toEpochMilli()
+        if (s != null && !s.isEmpty) {
+            s.sections.forEach { sec ->
+                Text(
+                    sec.directionLabel,
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(top = 8.dp)
+                )
+                val trains = sec.upcoming(nowMs)
+                if (trains.isEmpty()) {
+                    Text("Nessun treno nella prossima ora", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                } else {
+                    trains.forEach { TrainCard(it) }
+                }
+            }
             Fmt.warning(s, nowMs)?.let {
                 Text(it, color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.SemiBold)
             }

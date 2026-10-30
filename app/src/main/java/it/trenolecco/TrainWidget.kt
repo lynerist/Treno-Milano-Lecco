@@ -56,16 +56,50 @@ class TrainWidgetReceiver : GlanceAppWidgetReceiver() {
 }
 
 @Composable
-private fun small(text: String, color: androidx.compose.ui.graphics.Color = Palette.gray, bold: Boolean = false) {
+private fun small(
+    text: String,
+    color: androidx.compose.ui.graphics.Color = Palette.gray,
+    bold: Boolean = false,
+    size: Int = 11,
+    lines: Int = 1
+) {
     Text(
         text = text,
-        maxLines = 2,
+        maxLines = lines,
         style = TextStyle(
             color = ColorProvider(color),
-            fontSize = 12.sp,
+            fontSize = size.sp,
             fontWeight = if (bold) FontWeight.Bold else FontWeight.Normal
         )
     )
+}
+
+@Composable
+private fun DirectionBlock(sec: Section, nowMs: Long) {
+    val upcoming = sec.upcoming(nowMs)
+    small(sec.directionLabel.uppercase(), Palette.gray, bold = true, size = 11)
+    if (upcoming.isEmpty()) {
+        small("Nessun treno nella prossima ora", Palette.white, bold = true, size = 14)
+        return
+    }
+    val t = upcoming[0]
+    Row(verticalAlignment = Alignment.Vertical.Bottom) {
+        Text(
+            Fmt.time(t.scheduledMs),
+            style = TextStyle(color = ColorProvider(Palette.white), fontSize = 22.sp, fontWeight = FontWeight.Bold)
+        )
+        Spacer(GlanceModifier.width(8.dp))
+        Text(
+            Fmt.shortStatus(t),
+            maxLines = 1,
+            style = TextStyle(color = ColorProvider(Fmt.statusColor(t)), fontSize = 14.sp, fontWeight = FontWeight.Bold)
+        )
+    }
+    val next = upcoming.getOrNull(1)
+    val nextText = next?.let {
+        " · poi ${Fmt.time(it.scheduledMs)}" + if (it.status == TrainStatus.DELAYED) " (+${it.delayMin})" else ""
+    } ?: ""
+    small(Fmt.detail(t) + nextText)
 }
 
 @Composable
@@ -86,61 +120,27 @@ private fun WidgetContent(snap: Snapshot?, now: ZonedDateTime) {
                 "Fuori orario",
                 style = TextStyle(color = ColorProvider(Palette.white), fontSize = 20.sp, fontWeight = FontWeight.Bold)
             )
-            small("Riprende ${ActiveWindow.describeNext(now)}")
+            small("Riprende ${ActiveWindow.describeNext(now)}", size = 12, lines = 2)
             return@Column
         }
 
-        if (snap == null || (snap.fetchedAtMs == 0L && snap.trains.isEmpty())) {
+        if (snap == null || snap.isEmpty) {
             Text(
                 "Aggiornamento…",
                 style = TextStyle(color = ColorProvider(Palette.white), fontSize = 18.sp, fontWeight = FontWeight.Bold)
             )
-            snap?.error?.let { small("⚠ $it", Palette.amber) }
+            snap?.error?.let { small("⚠ $it", Palette.amber, size = 12, lines = 2) }
             return@Column
         }
 
-        val upcoming = snap.trains.filter { it.effectiveMs >= nowMs - 60_000 }
-
-        Row(modifier = GlanceModifier.fillMaxWidth()) {
-            Text(
-                snap.directionLabel,
-                maxLines = 1,
-                style = TextStyle(color = ColorProvider(Palette.gray), fontSize = 12.sp, fontWeight = FontWeight.Bold)
-            )
-            Spacer(GlanceModifier.defaultWeight())
-            small(if (snap.fetchedAtMs > 0) "agg. ${Fmt.time(snap.fetchedAtMs)}" else "")
-        }
-        Spacer(GlanceModifier.height(4.dp))
-
-        if (upcoming.isEmpty()) {
-            Text(
-                "Nessun treno nella prossima ora",
-                style = TextStyle(color = ColorProvider(Palette.white), fontSize = 16.sp, fontWeight = FontWeight.Bold)
-            )
-        } else {
-            val t = upcoming[0]
-            Row(verticalAlignment = Alignment.Vertical.Bottom) {
-                Text(
-                    Fmt.time(t.scheduledMs),
-                    style = TextStyle(color = ColorProvider(Palette.white), fontSize = 30.sp, fontWeight = FontWeight.Bold)
-                )
-                Spacer(GlanceModifier.width(10.dp))
-                Text(
-                    Fmt.shortStatus(t),
-                    maxLines = 1,
-                    style = TextStyle(color = ColorProvider(Fmt.statusColor(t)), fontSize = 18.sp, fontWeight = FontWeight.Bold)
-                )
-            }
-            small(Fmt.detail(t))
-            upcoming.getOrNull(1)?.let { n ->
-                Spacer(GlanceModifier.height(2.dp))
-                small("Poi ${Fmt.time(n.scheduledMs)} · ${Fmt.shortStatus(n)}", Fmt.statusColor(n))
-            }
+        snap.sections.forEachIndexed { i, sec ->
+            if (i > 0) Spacer(GlanceModifier.height(8.dp))
+            DirectionBlock(sec, nowMs)
         }
 
-        Fmt.warning(snap, nowMs)?.let {
-            Spacer(GlanceModifier.height(4.dp))
-            small(it, Palette.amber, bold = true)
-        }
+        Spacer(GlanceModifier.height(6.dp))
+        val warn = Fmt.warning(snap, nowMs)
+        if (warn != null) small(warn, Palette.amber, bold = true, lines = 2)
+        else small("agg. ${Fmt.time(snap.fetchedAtMs)}")
     }
 }
