@@ -16,6 +16,17 @@ android {
         versionName = "1.0"
     }
 
+    // Chiave di firma fissa: senza, ogni build su GitHub avrebbe una firma diversa
+    // e Android rifiuterebbe gli aggiornamenti sopra l'app già installata.
+    signingConfigs {
+        getByName("debug") {
+            storeFile = file("debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
