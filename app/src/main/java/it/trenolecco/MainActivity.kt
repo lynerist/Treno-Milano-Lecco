@@ -104,7 +104,7 @@ private fun MainScreen() {
                 if (trains.isEmpty()) {
                     Text("Nessun treno nella prossima ora", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 } else {
-                    trains.forEach { TrainCard(it) }
+                    trains.forEach { TrainCard(it, sec) }
                 }
             }
             Fmt.warning(s, nowMs)?.let {
@@ -135,7 +135,7 @@ private fun MainScreen() {
 }
 
 @Composable
-private fun TrainCard(t: Train) {
+private fun TrainCard(t: Train, sec: Section) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = Palette.cardBg)
@@ -145,10 +145,13 @@ private fun TrainCard(t: Train) {
             horizontalArrangement = Arrangement.spacedBy(14.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(Fmt.time(t.scheduledMs), fontSize = 32.sp, fontWeight = FontWeight.Bold, color = Palette.white)
+            Column {
+                Text(sec.timeLabel.uppercase(), fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Palette.gray)
+                Text(Fmt.time(t.scheduledMs), fontSize = 32.sp, fontWeight = FontWeight.Bold, color = Palette.white)
+            }
             Column {
                 Text(Fmt.shortStatus(t), fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Fmt.statusColor(t))
-                Text(Fmt.detail(t), fontSize = 13.sp, color = Palette.gray)
+                Text(Fmt.detail(t, sec.arrival), fontSize = 13.sp, color = Palette.gray)
             }
         }
     }

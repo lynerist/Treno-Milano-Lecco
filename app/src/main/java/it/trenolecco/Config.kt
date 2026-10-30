@@ -10,9 +10,8 @@ import java.time.ZoneId
 object Config {
     val zone: ZoneId = ZoneId.of("Europe/Rome")
 
-    // Codici stazione ViaggiaTreno
+    // Codice stazione ViaggiaTreno: tutti gli orari mostrati sono quelli della stazione di Lecco
     const val LECCO = "S01520"
-    const val MILANO_PG = "S01645"
 
     /** Giorni in cui l'app controlla i treni. */
     val workdays = setOf(
@@ -33,11 +32,20 @@ object Config {
     const val STALE_TRAIN_MINUTES = 10L
 }
 
+/**
+ * Le due rotte, entrambe viste dalla stazione di Lecco:
+ * - Lecco → Milano: tabellone partenze di Lecco, treni diretti a Milano P.G. (orario di partenza da Lecco)
+ * - Milano → Lecco: tabellone arrivi di Lecco, treni partiti da Milano P.G. (orario di arrivo a Lecco)
+ */
 enum class Direction(
     val label: String,
-    val originId: String,
-    val destinations: Set<String>
+    val arrival: Boolean,
+    val matchField: String,
+    val matchValues: Set<String>
 ) {
-    TO_MILANO("Lecco → Milano P.G.", Config.LECCO, setOf("MILANO PORTA GARIBALDI")),
-    TO_LECCO("Milano P.G. → Lecco", Config.MILANO_PG, setOf("LECCO", "COLICO", "SONDRIO", "TIRANO"));
+    TO_MILANO("Lecco → Milano P.G.", false, "destinazione", setOf("MILANO PORTA GARIBALDI")),
+    TO_LECCO("Milano P.G. → Lecco", true, "origine", setOf("MILANO PORTA GARIBALDI"));
+
+    val board: String get() = if (arrival) "arrivi" else "partenze"
+    val timeField: String get() = if (arrival) "orarioArrivo" else "orarioPartenza"
 }

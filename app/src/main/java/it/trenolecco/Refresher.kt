@@ -24,7 +24,7 @@ object Refresher {
                 }
                 // Si tengono i dati precedenti di questa direzione
                 prev?.sections?.firstOrNull { it.directionLabel == d.label }
-                    ?: Section(d.label, emptyList(), null)
+                    ?: Section(d.label, d.arrival, emptyList(), null)
             }
         }
 

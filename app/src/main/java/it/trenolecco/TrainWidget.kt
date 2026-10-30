@@ -99,7 +99,7 @@ private fun DirectionBlock(sec: Section, nowMs: Long) {
     val nextText = next?.let {
         " · poi ${Fmt.time(it.scheduledMs)}" + if (it.status == TrainStatus.DELAYED) " (+${it.delayMin})" else ""
     } ?: ""
-    small(Fmt.detail(t) + nextText)
+    small("${sec.timeLabel} · " + Fmt.detail(t, sec.arrival) + nextText)
 }
 
 @Composable

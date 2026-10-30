@@ -26,10 +26,15 @@ data class Train(
 /** I prossimi treni di una direzione (es. "Lecco → Milano P.G."). */
 data class Section(
     val directionLabel: String,
+    /** true: gli orari sono di arrivo a Lecco; false: di partenza da Lecco. */
+    val arrival: Boolean,
     val trains: List<Train>,
     /** Avviso sulla qualità dei dati (rilevamento fermo, servizio lento...). */
     val note: String?
 ) {
+    /** Etichetta dell'orario evidenziato (sempre riferito alla stazione di Lecco). */
+    val timeLabel: String get() = if (arrival) "Arriva a Lecco" else "Parte da Lecco"
+
     fun upcoming(nowMs: Long): List<Train> = trains.filter { it.effectiveMs >= nowMs - 60_000 }
 }
 
@@ -71,11 +76,11 @@ object Fmt {
         TrainStatus.PARTIAL -> Palette.amber
     }
 
-    fun detail(t: Train): String {
+    fun detail(t: Train, arrival: Boolean): String {
         val parts = ArrayList<String>()
         t.platform?.let { parts.add("Bin. $it") }
         parts.add(t.label)
-        if (t.status == TrainStatus.DELAYED) parts.add("parte ~${time(t.effectiveMs)}")
+        if (t.status == TrainStatus.DELAYED) parts.add((if (arrival) "arriva ~" else "parte ~") + time(t.effectiveMs))
         return parts.joinToString(" · ")
     }
 
@@ -95,7 +100,7 @@ object Fmt {
 /** Salva l'ultimo risultato in SharedPreferences, così widget e app lo condividono. */
 object SnapshotStore {
     private const val PREFS = "snapshot"
-    private const val KEY = "json_v2"
+    private const val KEY = "json_v3"
 
     fun save(ctx: Context, s: Snapshot) {
         val secs = JSONArray()
@@ -113,7 +118,7 @@ object SnapshotStore {
                         .put("seen", t.lastSeenMs)
                 )
             }
-            secs.put(JSONObject().put("dir", sec.directionLabel).put("note", sec.note).put("trains", arr))
+            secs.put(JSONObject().put("dir", sec.directionLabel).put("arrival", sec.arrival).put("note", sec.note).put("trains", arr))
         }
         val o = JSONObject()
             .put("fetched", s.fetchedAtMs)
@@ -142,7 +147,7 @@ object SnapshotStore {
                         lastSeenMs = if (t.isNull("seen")) null else t.getLong("seen")
                     )
                 }
-                Section(so.getString("dir"), trains, so.strOrNull("note"))
+                Section(so.getString("dir"), so.getBoolean("arrival"), trains, so.strOrNull("note"))
             }
             Snapshot(o.getLong("fetched"), sections, o.strOrNull("error"))
         } catch (e: Exception) {

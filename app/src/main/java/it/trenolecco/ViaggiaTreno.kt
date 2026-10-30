@@ -55,7 +55,7 @@ object ViaggiaTreno {
         for ((i, offset) in listOf(0L, 60L).withIndex()) {
             try {
                 val stamp = now.plusMinutes(offset).format(dateFmt).replace(" ", "%20")
-                val (arr, latency) = get("$BASE/partenze/${direction.originId}/$stamp")
+                val (arr, latency) = get("$BASE/${direction.board}/${Config.LECCO}/$stamp")
                 maxLatency = maxOf(maxLatency, latency)
                 parseInto(arr, direction, seen, trains)
             } catch (e: Exception) {
@@ -79,6 +79,7 @@ object ViaggiaTreno {
 
         return Section(
             directionLabel = direction.label,
+            arrival = direction.arrival,
             trains = upcoming,
             note = notes.takeIf { it.isNotEmpty() }?.joinToString(" · ")
         )
@@ -87,13 +88,13 @@ object ViaggiaTreno {
     private fun parseInto(arr: JSONArray, direction: Direction, seen: HashSet<String>, out: MutableList<Train>) {
         for (i in 0 until arr.length()) {
             val o = arr.getJSONObject(i)
-            val dest = o.strOrNull("destinazione")?.uppercase() ?: continue
-            if (dest !in direction.destinations) continue
+            val other = o.strOrNull(direction.matchField)?.uppercase() ?: continue
+            if (other !in direction.matchValues) continue
 
             val key = "${o.optInt("numeroTreno")}-${o.optLong("dataPartenzaTreno")}"
             if (!seen.add(key)) continue
 
-            val scheduled = o.optLong("orarioPartenza", 0L)
+            val scheduled = o.optLong(direction.timeField, 0L)
             if (scheduled == 0L) continue
 
             val delay: Int? = if (o.isNull("ritardo")) null else o.optInt("ritardo")
@@ -107,13 +108,16 @@ object ViaggiaTreno {
             }
             val label = o.strOrNull("compNumeroTreno")
                 ?: "${o.strOrNull("categoria") ?: "Treno"} ${o.optInt("numeroTreno")}"
-            val platform = o.strOrNull("binarioEffettivoPartenzaDescrizione")
-                ?: o.strOrNull("binarioProgrammatoPartenzaDescrizione")
+            val platform = if (direction.arrival) {
+                o.strOrNull("binarioEffettivoArrivoDescrizione") ?: o.strOrNull("binarioProgrammatoArrivoDescrizione")
+            } else {
+                o.strOrNull("binarioEffettivoPartenzaDescrizione") ?: o.strOrNull("binarioProgrammatoPartenzaDescrizione")
+            }
 
             out.add(
                 Train(
                     label = label,
-                    destination = dest,
+                    destination = other,
                     scheduledMs = scheduled,
                     delayMin = delay ?: 0,
                     status = status,
