@@ -1,11 +1,13 @@
 package it.trenolecco
 
 import android.content.Context
+import android.content.Intent
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
+import androidx.glance.LocalContext
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.GlanceAppWidgetReceiver
@@ -69,13 +71,14 @@ private fun small(text: String, color: androidx.compose.ui.graphics.Color = Pale
 @Composable
 private fun WidgetContent(snap: Snapshot?, now: ZonedDateTime) {
     val nowMs = now.toInstant().toEpochMilli()
+    val openApp = actionStartActivity(Intent(LocalContext.current, MainActivity::class.java))
     Column(
         modifier = GlanceModifier
             .fillMaxSize()
             .background(ColorProvider(Palette.cardBg))
             .cornerRadius(20.dp)
             .padding(12.dp)
-            .clickable(actionStartActivity<MainActivity>()),
+            .clickable(openApp),
         verticalAlignment = Alignment.Vertical.CenterVertically
     ) {
         if (!ActiveWindow.isActive(now)) {
