@@ -28,6 +28,25 @@ object ActiveWindow {
         return now.plusDays(1)
     }
 
+    /** Fine della fascia in corso (solo se [now] è dentro una fascia attiva). */
+    private fun currentEnd(now: ZonedDateTime): ZonedDateTime? {
+        val t = now.toLocalTime()
+        val (_, to) = Config.windows.firstOrNull { (from, to) -> !t.isBefore(from) && t.isBefore(to) } ?: return null
+        return now.toLocalDate().atTime(to).atZone(Config.zone)
+    }
+
+    /**
+     * Prossimo momento in cui il widget deve svegliarsi: dentro una fascia ogni [stepMin] minuti
+     * (ma mai oltre la fine della fascia, così a fine fascia si aggiorna subito in "Fuori orario");
+     * fuori fascia, esattamente all'inizio della fascia successiva.
+     */
+    fun nextWake(now: ZonedDateTime, stepMin: Long): ZonedDateTime {
+        if (now.dayOfWeek !in Config.workdays) return nextStart(now)
+        val end = currentEnd(now) ?: return nextStart(now)
+        val step = now.plusMinutes(stepMin)
+        return if (step.isBefore(end)) step else end
+    }
+
     /** Es. "oggi alle 16:00", "domani alle 07:00", "lunedì alle 07:00". */
     fun describeNext(now: ZonedDateTime): String {
         val s = nextStart(now)

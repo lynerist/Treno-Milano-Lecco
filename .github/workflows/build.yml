@@ -26,15 +26,15 @@ jobs:
         with:
           gradle-version: 8.10.2
 
-      - name: Build debug APK
+      - name: Test e build APK debug
         run: |
           set -o pipefail
-          gradle assembleDebug --no-daemon --console=plain 2>&1 | tee build.log
+          gradle testDebugUnitTest assembleDebug --no-daemon --console=plain 2>&1 | tee build.log
 
       - name: Show build errors
         if: failure()
         run: |
-          grep -E -A8 "^e: |What went wrong|error:" build.log | grep -v "^> Task" | head -40 | while IFS= read -r l; do echo "::error::${l//%/%25}"; done
+          grep -E -A8 "^e: |What went wrong|error:|FAILED|AssertionError" build.log | grep -v "^> Task" | head -40 | while IFS= read -r l; do echo "::error::${l//%/%25}"; done
 
       - uses: actions/upload-artifact@v4
         with:

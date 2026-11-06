@@ -27,8 +27,8 @@ object ViaggiaTreno {
         val started = System.currentTimeMillis()
         val conn = URL(url).openConnection() as HttpURLConnection
         try {
-            conn.connectTimeout = 8_000
-            conn.readTimeout = 10_000
+            conn.connectTimeout = 5_000
+            conn.readTimeout = 6_000
             conn.setRequestProperty("User-Agent", UA)
             conn.setRequestProperty("Accept", "application/json, text/plain, */*")
             val code = conn.responseCode

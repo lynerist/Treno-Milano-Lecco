@@ -49,6 +49,15 @@ class TrainWidgetReceiver : GlanceAppWidgetReceiver() {
         Scheduler.restart(context)
     }
 
+    override fun onUpdate(
+        context: Context,
+        appWidgetManager: android.appwidget.AppWidgetManager,
+        appWidgetIds: IntArray
+    ) {
+        super.onUpdate(context, appWidgetManager, appWidgetIds)
+        Scheduler.ensureArmed(context)
+    }
+
     override fun onDisabled(context: Context) {
         super.onDisabled(context)
         Scheduler.stopAll(context)
