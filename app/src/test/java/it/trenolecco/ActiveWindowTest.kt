@@ -50,7 +50,7 @@ class ActiveWindowTest {
     @Test
     fun chainNeverStallsFromFridayToMonday() {
         var now = t("2026-11-06", "00:00")
-        val limit = t("2026-11-09", "12:00")
+        val limit = t("2026-11-09", "20:00")
         val wakes = HashSet<String>()
         while (now.isBefore(limit)) {
             val next = ActiveWindow.nextWake(now, 3)
